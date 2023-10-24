@@ -5,16 +5,15 @@ import numpy as np
 import tenseal as ts
 
 import sys
-import tenseal_shapley_data_pb2_grpc, tenseal_shapley_data_pb2
+from transmission.tenseal_shapley import tenseal_allreduce_data_pb2_grpc, tenseal_allreduce_data_pb2
 
 
-class ShapleyClient:
+class AllReduceClient:
 
     def __init__(self, server_address, args):
         self.server_address = server_address
         self.client_rank = args.rank
         self.num_clients = args.world_size
-        self.k = args.k
         self.ctx_file = args.config
 
         context_bytes = open(self.ctx_file, "rb").read()
@@ -24,9 +23,9 @@ class ShapleyClient:
         self.options = [('grpc.max_send_message_length', self.max_msg_size),
                         ('grpc.max_receive_message_length', self.max_msg_size)]
         channel = grpc.insecure_channel(self.server_address, options=self.options)
-        self.stub = tenseal_shapley_data_pb2_grpc.ShapleyServiceStub(channel)
+        self.stub = tenseal_allreduce_data_pb2_grpc.AllReduceServiceStub(channel)
 
-    def __sum_shapley(self, plain_vector):
+    def __sum_enc(self, plain_vector):
         print(">>> client sum encrypted start")
 
         # encrypt
@@ -38,9 +37,8 @@ class ShapleyClient:
         request_start = time.time()
         enc_vector_bytes = enc_vector.serialize()
         print("size of msg: {} bytes".format(sys.getsizeof(enc_vector_bytes)))
-        request = tenseal_shapley_data_pb2.client_shapley_msg(
+        request = tenseal_allreduce_data_pb2.client_msg(
             client_rank=self.client_rank,
-            k=self.k,
             msg=enc_vector_bytes
         )
         request_time = time.time() - request_start
@@ -48,26 +46,33 @@ class ShapleyClient:
         # comm with server
         comm_start = time.time()
         print("start comm with server, time = {}".format(time.asctime(time.localtime(time.time()))))
-        response = self.stub.sum_shapley(request)
+        response = self.stub.sum_enc(request)
         comm_time = time.time() - comm_start
 
-        # deserialize summed vector from response
+        # deserialize summed enc vector from response
         deserialize_start = time.time()
         assert self.client_rank == response.client_rank
-        top_k_ranking_flat = list(response.ranking)
-        assert len(top_k_ranking_flat) == (2**self.num_clients - 1) * self.k
+        summed_enc_vector = ts.ckks_vector_from(self.ctx, request.msg)
         deserialize_time = time.time() - deserialize_start
 
-        print(">>> client sum shapley end, cost {:.2f} s: encryption {:.2f} s, create request {:.2f} s, "
-              "comm with server {:.2f} s, deserialize {:.2f} s"
-              .format(time.time() - encrypt_start, encrypt_time, request_time,
-                      comm_time, deserialize_time))
+        # decrypt vector
+        decrypt_start = time.time()
+        dec_vector = summed_enc_vector.decrypt()
+        print("size of received vector: {}".format(len(dec_vector)))
+        decrypt_time = time.time() - decrypt_start
 
-        return top_k_ranking_flat
+        np_dec_vector =np.array(dec_vector)
+
+        print(">>> client sum enc vector end, cost {:.2f} s: encryption {:.2f} s, create request {:.2f} s, "
+              "comm with server {:.2f} s, deserialize {:.2f} s, decrypt {:.2f} s"
+              .format(time.time() - encrypt_start, encrypt_time, request_time,
+                      comm_time, deserialize_time, decrypt_time))
+
+        return np_dec_vector
 
     def transmit(self, plain_vector, operator="sum"):
         trans_start = time.time()
-        response = self.__sum_shapley(plain_vector) if operator == "sum" else None
-        print(">>> client transmission cost {:.2f} s, return top-k ranking {}"
-              .format(time.time() - trans_start, response[:10]))
+        response = self.__sum_enc(plain_vector) if operator == "sum" else None
+        print(">>> client transmission cost {:.2f} s"
+              .format(time.time() - trans_start))
         return response

@@ -10,8 +10,9 @@ import torch.distributed as dist
 from sklearn.metrics import accuracy_score, roc_auc_score
 
 # sys.path.append("../../")
+# from data_loader.data_partition import load_dummy_partition_with_label
 from data_loader.load_data import load_dummy_partition_with_label, load_credit_data
-from trainer.knn_shapley.fagin_batch_trainer import FaginBatchTrainer
+from tenseal_trainer.knn_shapley.all_reduce_trainer import AllReduceTrainer
 from utils.helpers import seed_torch
 
 
@@ -43,7 +44,8 @@ def run(args):
     # torch.manual_seed(args.seed)
     # np.random.seed(args.seed)
     seed_torch()
-    print("device = {}".format(device))
+    if args.rank == 0:
+        print("device = {}".format(device))
 
     world_size = args.world_size
     rank = args.rank
@@ -51,6 +53,7 @@ def run(args):
     # file_name = "{}/{}_{}".format(args.root, rank, world_size)
     # print("read file {}".format(file_name))
     dataset = load_credit_data()
+
     load_start = time.time()
     data, targets = load_dummy_partition_with_label(dataset, args.num_clients, rank)
     if args.rank == 0:
@@ -70,6 +73,9 @@ def run(args):
     num_data = len(data)
     n_test = int(num_data * args.test_ratio)
 
+    num_data = len(data)
+    n_test = int(num_data * args.test_ratio)
+
     train_data = data[n_test:]
     train_targets = targets[n_test:]
     test_data = data[:n_test]
@@ -79,38 +85,55 @@ def run(args):
     utility_value = dict()
     n_utility_round = 0
 
+    trainer = AllReduceTrainer(args, train_data, train_targets)
+
     # cal utility of all group_keys, group key = 1-(2^k-1)
     start_key = 1
     end_key = int(math.pow(2, args.world_size)) - 1
-    group_keys = [i for i in range(start_key, end_key + 1)]
-    trainer = FaginBatchTrainer(args, train_data, train_targets)
-
     utility_start = time.time()
-    pred_targets = []
-    pred_probs = []
-    true_targets = []
+    for group_key in range(start_key, end_key + 1):
+        group_flags = utility_key_to_groups(group_key, world_size)
+        if args.rank == 0:
+            print("--- compute utility of group : {} ---".format(group_flags))
 
-    for i in range(args.n_test):
-        # print(">>>>>> test[{}] <<<<<<".format(i))
-        one_test_start = time.time()
-        cur_test_data = test_data[i]
-        cur_test_target = test_targets[i]
-        true_targets.append(cur_test_target)
-        # trainer.find_top_k(cur_test_data, cur_test_target, args.k, group_keys)
-        pred_target, pred_prob = trainer.find_top_k(cur_test_data, cur_test_target, args.k, group_keys)
-        # if args.rank == 0:
-        #     print(pred_target)
-        pred_targets.append(pred_target)
-        pred_probs.append(pred_prob)
+        pred_targets = []
+        pred_probs = []
+        true_targets = []
 
-        one_test_time = time.time() - one_test_start
-    pred_targets = np.array(pred_targets)
-    pred_probs = np.array(pred_probs)
-    true_targets = np.array(true_targets)
-    # print(group_keys)
-    for key in group_keys:
-        accuracy = accuracy_score(true_targets, pred_targets[:, key - 1])
-        utility_value[key] = accuracy
+        test_start = time.time()
+
+        for i in range(args.n_test):
+            # print(">>>>>> test[{}] <<<<<<".format(i))
+            one_test_start = time.time()
+            cur_test_data = test_data[i]
+            cur_test_target = test_targets[i]
+            true_targets.append(cur_test_target)
+
+            pred_target, pred_prob = trainer.find_top_k(cur_test_data, cur_test_target, args.k, group_flags)
+            pred_targets.append(pred_target)
+            pred_probs.append(pred_prob)
+
+            one_test_time = time.time() - one_test_start
+
+            # print("one test finish: target = {}, prediction = {}, cost {} s"
+            #      .format(cur_test_target, pred_target, one_test_time))
+        if args.rank == 0:
+            print("test {} data cost {} s".format(args.n_test, time.time() - test_start))
+        # print("targets = {}".format(true_targets))
+        # print("predictions = {}".format(pred_targets))
+        # print("pred probs = {}".format(pred_probs))
+        accuracy = accuracy_score(true_targets, pred_targets)
+        # two-class
+        auc = roc_auc_score(true_targets, np.array(pred_probs)[:, 1])
+        # multi-class
+        # auc = roc_auc_score(true_targets, np.array(pred_probs), multi_class="ovr")
+        if args.rank == 0:
+            print("accuracy = {}, auc = {}".format(accuracy, auc))
+
+        utility_value[group_key] = accuracy
+        n_utility_round += 1
+    if args.rank == 0:
+        print("calculate utility cost {:.2f} s, total round {}".format(time.time() - utility_start, n_utility_round))
 
     group_acc_sum = [0 for _ in range(args.world_size)]
     for group_key in range(start_key, end_key + 1):
@@ -172,7 +195,11 @@ def init_processes(arg, fn):
 if __name__ == '__main__':
 
     processes = []
+    # torch.multiprocessing.set_start_method("spawn")
     args = global_args_parser()
+    # args.dataset = 'libsvm-a8a'
+    # args.loss_total = 0.01
+    # args.seed = 2023
     for r in range(args.world_size):
         args.rank = r
         p = Process(target=init_processes, args=(args, run))
@@ -181,3 +208,5 @@ if __name__ == '__main__':
 
     for p in processes:
         p.join()
+
+

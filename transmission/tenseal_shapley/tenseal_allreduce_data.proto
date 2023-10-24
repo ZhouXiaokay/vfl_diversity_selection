@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+message client_msg {
+  //the following values correspond to
+  // - protobuf data type
+  // - name
+  // - numeric tag corresponding to the ordering in which the fields are serialized
+  int32 client_rank = 1;
+  bytes msg = 2;
+}
+
+service AllReduceService {
+  rpc sum_enc (client_msg) returns (client_msg);
+}

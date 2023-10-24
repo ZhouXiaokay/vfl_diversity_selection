@@ -77,6 +77,9 @@ def global_args_parser():
     parser.add_argument('--k', type=int, default=10)
     parser.add_argument('--n-test', type=int, default=300)
     parser.add_argument('--test_ratio', type=float, default=0.2)
+    parser.add_argument('--config', type=str, default='/home/userdata/zxk/codes/vfl_diversity_selection/'
+                                                      'transmission/tenseal_shapley/ts_ckks_tiny.config')
+    parser.add_argument('--a_server_address', type=str, default='127.0.0.1:34567')
 
     args = parser.parse_args()
     return args
