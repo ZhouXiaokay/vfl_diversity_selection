@@ -55,8 +55,8 @@ def run(args):
     # dataset = load_bank_data()
     # dataset = load_mushroom_data()
     # dataset = load_covtype_data()
-    # dataset = load_adult_data()
-    dataset = load_web_data()
+    dataset = load_adult_data()
+    # dataset = load_web_data()
     # dataset = load_phishing_data()
 
     load_start = time.time()

@@ -4,10 +4,12 @@ import math
 import numpy as np
 import torch
 import torch.distributed as dist
-
+from multiprocessing import Process
+from multiprocessing import Queue
 from utils.distance import square_euclidean_np
 from utils.comm_op import gather, sum_sqrt_all_reduce, sum_all_reduce, all_gather
 from utils.fagin_utils import suggest_size, master_count_by_arr, master_count_fagin_group
+from transmission.tenseal_shapley.tenseal_all_reduce_client import AllReduceClient
 
 
 def get_utility_key(client_attendance):
@@ -34,6 +36,13 @@ class FaginTrainer(object):
         self.n_data = len(data)
         self.targets = targets
         self.client_list = [i for i in range(args.num_clients)]
+        self.server_addr = args.a_server_address
+        self.client = AllReduceClient(self.server_addr, args)
+
+    def transmit(self, vector):
+
+        summed_vector = self.client.transmit(vector)
+        return summed_vector
 
     def find_top_k(self, test_data, test_target, k):
         start_time = time.time()
@@ -119,11 +128,13 @@ class FaginTrainer(object):
         # sync candidates for top-k, i.e, the instances seen so far in fagin
         candidate_dist_start = time.time()
         candidate_local_dist = local_dist[candidate_ind]
-        all_candidate_local_dist = all_gather(candidate_local_dist)
+        # all_candidate_local_dist = all_gather(candidate_local_dist)
 
-        candidate_dist = sum_all_reduce(candidate_local_dist)
+        # candidate_dist = sum_all_reduce(candidate_local_dist)
+        dist.barrier()
+        candidate_dist = self.client.transmit(candidate_local_dist)
         candidate_dist_time = time.time() - candidate_dist_start
-
+        dist.barrier()
 
         # sort global distance
         select_top_start = time.time()
@@ -140,7 +151,6 @@ class FaginTrainer(object):
         sorted_dist_top_k = candidate_dist[ind_k]
         select_top_time = time.time() - select_top_start
         if self.args.rank == 0:
-
             print("indices of k near neighbor = {}".format(top_k_ids))
             print("distance of k near neighbor = {}".format(sorted_dist_top_k))
 
@@ -153,16 +163,20 @@ class FaginTrainer(object):
         pred_prob = [i / float(k) for i in label_count]
         # print(all_candidate_local_dist)
 
-        average_dist_top_k = np.sum(all_candidate_local_dist[ind_k, :], axis=0)
+        local_top_k_dist = local_dist[top_k_ids]
+        sum_local_top_k_dist = np.array(np.sum(local_top_k_dist, axis=0)).reshape(1,)
+        average_dist_top_k = np.squeeze(all_gather(sum_local_top_k_dist))
 
         # if self.args.rank == 0:
         #     print(all_candidate_local_dist)
         #     print(average_dist_top_k)
 
         if self.args.rank == 0:
+            print("candidate local dist = {}".format(candidate_local_dist[:10]))
+            print("candidate dist = {}".format(candidate_dist[:10]))
             print("indices of k near neighbor = {}".format(top_k_ids))
             print("distance of k near neighbor = {}".format(sorted_dist_top_k))
-        # print("average distance of k near neighbor = {}".format(np.average(sorted_dist_top_k, axis=1)))
-        # print(np.average(sorted_dist_top_k,axis=1))
+            # print("average distance of k near neighbor = {}".format(np.average(sorted_dist_top_k, axis=1)))
+            # print(np.average(sorted_dist_top_k,axis=1))
 
         return pred_target, pred_prob, average_dist_top_k

@@ -37,7 +37,7 @@ def utility_key_to_groups(key, world_size):
     return client_attendance
 
 
-def stochastic_greedy(avg_dist_list, num_clients, select_clients, subsample=0.6):
+def stochastic_greedy(avg_dist_list, num_clients, select_clients, subsample=0.9):
 
     # client_list = [i for i in range(num_clients)]
     # initialize the ground set and the selected set

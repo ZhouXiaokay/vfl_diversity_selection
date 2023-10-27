@@ -10,9 +10,9 @@ import torch.distributed as dist
 from sklearn.metrics import accuracy_score, roc_auc_score
 
 # sys.path.append("../../")
-from data_loader.load_data import load_dummy_partition_with_label, load_credit_data, load_bank_data, \
-    load_covtype_data, load_adult_data
-from trainer.knn_diversity.fagin_trainer import FaginTrainer
+from data_loader.load_data import load_dummy_partition_with_label, load_credit_data, load_bank_data, load_covtype_data, \
+    load_adult_data
+from tenseal_trainer.knn_diversity.fagin_trainer import FaginTrainer
 from utils.helpers import seed_torch, stochastic_greedy
 
 

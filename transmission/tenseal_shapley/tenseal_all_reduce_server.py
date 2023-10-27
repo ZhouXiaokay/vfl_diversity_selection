@@ -54,6 +54,7 @@ class AllReduceServer(tenseal_allreduce_data_pb2_grpc.AllReduceServiceServicer):
         deser_time = time.time() - deser_start
 
         self.sum_enc_vectors.append(enc_vector)
+        self.n_sum_request += 1
 
         # wait until receiving of all clients' requests
         wait_start = time.time()
@@ -72,7 +73,7 @@ class AllReduceServer(tenseal_allreduce_data_pb2_grpc.AllReduceServiceServicer):
         while not self.sum_completed:
             time.sleep(self.sleep_time)
         sum_wait_time = time.time() - sum_wait_start
-
+        # print(self.sum_data[0].decrypt()[0:10])
         # create response
         response_start = time.time()
         response = tenseal_allreduce_data_pb2.client_msg(
