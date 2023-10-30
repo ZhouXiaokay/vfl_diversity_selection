@@ -36,6 +36,9 @@ class AllReduceClient:
         # create request
         request_start = time.time()
         enc_vector_bytes = enc_vector.serialize()
+
+        # send size of msg{ sys.getsizeof(enc_vector_bytes)}
+
         # print("size of msg: {} bytes".format(sys.getsizeof(enc_vector_bytes)))
         request = tenseal_allreduce_data_pb2.client_msg(
             client_rank=self.client_rank,
@@ -54,6 +57,8 @@ class AllReduceClient:
         assert self.client_rank == response.client_rank
         summed_enc_vector = ts.ckks_vector_from(self.ctx, response.msg)
         deserialize_time = time.time() - deserialize_start
+
+        # received size of msg{ sys.getsizeof(response.msg)}
 
         # decrypt vector
         decrypt_start = time.time()

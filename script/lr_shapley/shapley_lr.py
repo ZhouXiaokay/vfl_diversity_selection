@@ -202,6 +202,8 @@ def run(args):
 
         shapley_ind = np.argsort(np.array(shapley_value))
         print("client ranking = {}".format(shapley_ind.tolist()[::-1]))
+        run_end = time.time()
+
 
         # logger.info("shapley value of {} clients: {}".format(len(shapley_value), shapley_value))
         # logger.info("client ranking = {}".format(shapley_ind.tolist()[::-1]))
