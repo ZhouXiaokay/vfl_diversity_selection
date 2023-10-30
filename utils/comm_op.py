@@ -32,6 +32,12 @@ def sum_sqrt_all_gather(dist_arr):
     return np.sqrt(sum_tensor.numpy())
 
 
+def sum_all_gather_tensor(params_tensor):
+    tensor_list = [torch.zeros_like(params_tensor) for _ in range(dist.get_world_size())]
+    dist.all_gather(tensor_list, params_tensor)
+    gather_tensor = torch.concat(tensor_list, dim=-1)
+    return gather_tensor
+
 def all_gather(dist_arr):
     dist_tensor = torch.from_numpy(dist_arr)
     tensor_list = [torch.zeros_like(dist_tensor) for _ in range(dist.get_world_size())]
