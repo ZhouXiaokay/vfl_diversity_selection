@@ -10,9 +10,8 @@ import torch.distributed as dist
 from sklearn.metrics import accuracy_score, roc_auc_score
 
 # sys.path.append("../../")
-from data_loader.load_data import load_dummy_partition_with_label, load_credit_data, load_bank_data, \
-    load_covtype_data, load_adult_data
-from trainer.knn_diversity.fagin_trainer import FaginTrainer
+from data_loader.load_data import load_dummy_partition_with_label, choose_dataset
+from trainer.knn_mi.fagin_batch_trainer import FaginBatchTrainer
 from utils.helpers import seed_torch, stochastic_greedy
 
 
@@ -40,7 +39,6 @@ def utility_key_to_groups(key, world_size):
 
 
 def run(args):
-    start_time = time.time()
     device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
     # torch.manual_seed(args.seed)
     # np.random.seed(args.seed)
@@ -54,8 +52,11 @@ def run(args):
     # print("read file {}".format(file_name))
     # dataset = load_credit_data()
     # dataset = load_bank_data()
+    # dataset = load_mushroom_data()
     # dataset = load_covtype_data()
-    dataset = load_adult_data()
+    dataset = choose_dataset('adult')
+    # dataset = load_web_data()
+    # dataset = load_phishing_data()
 
     load_start = time.time()
     data, targets = load_dummy_partition_with_label(dataset, args.num_clients, rank)
@@ -83,6 +84,11 @@ def run(args):
     test_data = data[:n_test]
     test_targets = targets[:n_test]
 
+    # train_data = data[args.n_test:]
+    # train_targets = targets[args.n_test:]
+    # test_data = data[:args.n_test]
+    # test_targets = targets[:args.n_test]
+
     # accuracy of a group of clients, key is binary encode of client attendance
     utility_value = dict()
     n_utility_round = 0
@@ -90,61 +96,28 @@ def run(args):
     # cal utility of all group_keys, group key = 1-(2^k-1)
     start_key = 1
     end_key = int(math.pow(2, args.world_size)) - 1
-    group_keys = [i for i in range(start_key, end_key + 1)]
-    trainer = FaginTrainer(args, train_data, train_targets)
+    group_key_ind = np.arange(start_key, end_key + 1)
+    group_keys = [3, 5, 6, 9, 10, 12]
+    trainer = FaginBatchTrainer(args, train_data, train_targets)
 
     utility_start = time.time()
     pred_targets = []
     pred_probs = []
     true_targets = []
     avg_dists = []
-
+    client_mi_values = np.zeros(args.world_size)
     for i in range(args.n_test):
         # print(">>>>>> test[{}] <<<<<<".format(i))
         one_test_start = time.time()
         cur_test_data = test_data[i]
         cur_test_target = test_targets[i]
         true_targets.append(cur_test_target)
-        # trainer.find_top_k(cur_test_data, cur_test_target, args.k, group_keys)
-        pred_target, pred_prob, avg_dist = trainer.find_top_k(cur_test_data, cur_test_target, args.k)
-        # if args.rank == 0:
-        #     print(pred_target)
-        pred_targets.append(pred_target)
-        pred_probs.append(pred_prob)
-        avg_dists.append(avg_dist)
+        cur_mi_values = trainer.find_top_k(cur_test_data, cur_test_target, args.k, group_keys)
+        client_mi_values += cur_mi_values
 
-        one_test_time = time.time() - one_test_start
-    # pred_targets = np.array(pred_targets)
-    # pred_probs = np.array(pred_probs)
-    # true_targets = np.array(true_targets)
-    # # print(group_keys)
-    # for key in group_keys:
-    #     accuracy = accuracy_score(true_targets, pred_targets[:, key - 1])
-    #     utility_value[key] = accuracy
-    #
-    # group_acc_sum = [0 for _ in range(args.world_size)]
-    # for group_key in range(start_key, end_key + 1):
-    #     group_flags = utility_key_to_groups(group_key, world_size)
-    #     n_participant = sum(group_flags)
-    #     group_acc_sum[n_participant - 1] += utility_value[group_key]
-    #     if args.rank == 0:
-    #         print("group {}, accuracy = {}".format(group_flags, utility_value[group_key]))
-    # if args.rank == 0:
-    #     print("accuracy sum of different size: {}".format(group_acc_sum))
-
-    avg_dists = np.average(np.array(avg_dists), axis=0)
-    client_local_dist = avg_dists[:, np.newaxis]
-    select_clients = stochastic_greedy(client_local_dist, args.num_clients, args.select_clients)
-    # print(client_local_dist)
+    mi_sort_ind = np.argsort(client_mi_values)[::-1]
     if args.rank == 0:
-        print("selected clients are: ", select_clients)
-        print("client local dist: ", client_local_dist)
-    if args.rank == 0:
-        print(avg_dists)
-
-    end_time = time.time()
-
-    print("time cost", end_time - start_time)
+        print(mi_sort_ind)
 
 
 def init_processes(arg, fn):

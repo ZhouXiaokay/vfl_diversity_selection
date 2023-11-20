@@ -12,7 +12,7 @@ def global_args_parser():
         '-i',
         '--init-method',
         type=str,
-        default='tcp://127.0.0.1:23457',
+        default='tcp://127.0.0.1:23459',
         help='URL specifying how to initialize the package.')
     parser.add_argument('--rank',
                         type=int,
@@ -38,7 +38,7 @@ def global_args_parser():
                         type=float,
                         help='learning rate')
     parser.add_argument('--seed',
-                        default=78,
+                        default=1,
                         type=int,
                         help='random seed')
     parser.add_argument('--loss_total',
