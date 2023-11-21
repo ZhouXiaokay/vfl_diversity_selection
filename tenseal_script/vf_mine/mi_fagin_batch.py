@@ -11,7 +11,7 @@ from sklearn.metrics import accuracy_score, roc_auc_score
 
 # sys.path.append("../../")
 from data_loader.load_data import load_dummy_partition_with_label, choose_dataset
-from trainer.knn_mi.fagin_batch_trainer import FaginBatchTrainer
+from tenseal_trainer.knn_mi.fagin_batch_trainer import FaginBatchTrainer
 from utils.helpers import seed_torch, stochastic_greedy
 
 
@@ -54,7 +54,7 @@ def run(args):
     # dataset = load_bank_data()
     # dataset = load_mushroom_data()
     # dataset = load_covtype_data()
-    dataset = choose_dataset('ijcnn')
+    dataset = choose_dataset('credit')
     # dataset = load_web_data()
     # dataset = load_phishing_data()
 

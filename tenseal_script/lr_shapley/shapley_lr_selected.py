@@ -58,7 +58,7 @@ def run(args):
     data_rank = input_indices[client_rank]
     print("data rank is:", data_rank)
 
-    data_name = 'SUSY'
+    data_name = 'smk-drk'
     dataset = choose_dataset(data_name)
 
     data, targets = load_dummy_partition_with_label(dataset, args.num_clients, data_rank)

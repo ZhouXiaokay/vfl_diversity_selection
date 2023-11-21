@@ -55,20 +55,21 @@ class AllReduceServer(tenseal_allreduce_data_pb2_grpc.AllReduceServiceServicer):
 
         self.sum_enc_vectors.append(enc_vector)
         self.n_sum_request += 1
-        print("here 1")
+        print("here 1", self.n_sum_request)
         # wait until receiving of all clients' requests
         wait_start = time.time()
         while self.n_sum_request % self.num_clients != 0:
             time.sleep(self.sleep_time)
         wait_time = time.time() - wait_start
 
-        if client_rank == self.num_clients - 1:
+        if client_rank == 0:
             sum_start = time.time()
             summed_enc_vector = sum(self.sum_enc_vectors)
             self.sum_data.append(summed_enc_vector)
             sum_time = time.time() - sum_start
             self.sum_completed = True
-        print("here 2")
+        print("here 2", client_rank)
+        # print("here here", client_rank, self.sum_enc_vectors)
         sum_wait_start = time.time()
         while not self.sum_completed:
             time.sleep(self.sleep_time)
@@ -84,12 +85,12 @@ class AllReduceServer(tenseal_allreduce_data_pb2_grpc.AllReduceServiceServicer):
         print("here 3")
         # wait until creating all response
         self.n_sum_response = self.n_sum_response + 1
-        print("here 4",self.n_sum_response)
+        print("here 4", self.n_sum_response)
         while self.n_sum_response % self.num_clients != 0:
             time.sleep(self.sleep_time)
         print("here 5")
 
-        if client_rank == self.num_clients - 1:
+        if client_rank == 0:
             self.reset_sum()
 
         # wait until cache for sum is reset
@@ -121,6 +122,6 @@ if __name__ == '__main__':
     args = global_args_parser()
     server_address = args.a_server_address
     # num_clients = args.num_clients
-    num_clients = args.world_size
+    num_clients = args.mi_world_size
     ctx_file = args.config
     launch_server(server_address, num_clients, ctx_file)

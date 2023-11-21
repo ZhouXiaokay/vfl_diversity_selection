@@ -32,6 +32,7 @@ class ShapleyLRTrainer(object):
     def one_iteration(self, x, y):
 
         partial_z = self.lr(x) if self.is_attend == 1 else torch.zeros(x.shape[0])
+        sum_z = sum_all_reduce_tensor(partial_z)
         sum_z = self.transmit(partial_z)
         # sum_z = sum_all_reduce_tensor(partial_z)
         sum_z.requires_grad = True
