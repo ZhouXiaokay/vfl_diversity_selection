@@ -38,7 +38,7 @@ def global_args_parser():
                         type=float,
                         help='learning rate')
     parser.add_argument('--seed',
-                        default=60,
+                        default=66,
                         type=int,
                         help='random seed')
     parser.add_argument('--loss_total',

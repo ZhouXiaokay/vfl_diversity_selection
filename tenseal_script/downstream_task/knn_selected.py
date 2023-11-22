@@ -60,7 +60,7 @@ def run(args):
     data_rank = input_indices[rank]
     print("data rank is:", data_rank)
 
-    data_name = 'phishing'
+    data_name = 'bank'
     dataset = choose_dataset(data_name)
 
     load_start = time.time()
@@ -103,7 +103,7 @@ def run(args):
 
     test_start = time.time()
 
-    for i in range(args.n_test):
+    for i in range(n_test):
         # print(">>>>>> test[{}] <<<<<<".format(i))
         one_test_start = time.time()
         cur_test_data = test_data[i]
