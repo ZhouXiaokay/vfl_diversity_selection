@@ -31,7 +31,6 @@ def dist_is_initialized():
 
 
 def encode(indices):
-    max_index = max(indices)
     max_size = len(indices)
     result = [1] * max_size
     return result
@@ -54,7 +53,7 @@ def run(args):
     client_rank = args.rank
     world_size = args.world_size
     device = args.device
-    input_indices = [0, 1, 2, 3]
+    input_indices = [0,  3]
     data_rank = input_indices[client_rank]
     print("data rank is:", data_rank)
 

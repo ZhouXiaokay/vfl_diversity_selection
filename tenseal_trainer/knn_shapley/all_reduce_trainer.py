@@ -63,7 +63,7 @@ class AllReduceTrainer(object):
         count_label_start = time.time()
         label_count = [0 for _ in range(self.args.n_classes)]
         for nid in top_k_ids:
-            label_count[self.targets[nid]] += 1
+            label_count[int(self.targets[nid])] += 1
         pred_target = np.argmax(label_count)
         pred_prob = [i / float(k) for i in label_count]
         if self.args.rank == 0:

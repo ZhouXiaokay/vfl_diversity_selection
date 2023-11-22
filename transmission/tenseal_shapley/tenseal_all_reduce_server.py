@@ -31,6 +31,7 @@ class AllReduceServer(tenseal_allreduce_data_pb2_grpc.AllReduceServiceServicer):
         self.sum_completed = False
 
         print("all reduce server has been initialized")
+        print("world size is:", num_clients )
 
     def reset_sum(self):
         self.sum_enc_vectors = []
@@ -122,6 +123,6 @@ if __name__ == '__main__':
     args = global_args_parser()
     server_address = args.a_server_address
     # num_clients = args.num_clients
-    num_clients = args.mi_world_size
+    num_clients = args.world_size
     ctx_file = args.config
     launch_server(server_address, num_clients, ctx_file)
