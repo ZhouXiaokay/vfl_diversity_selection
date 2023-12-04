@@ -24,6 +24,7 @@ class AllReduceClient:
                         ('grpc.max_receive_message_length', self.max_msg_size)]
         channel = grpc.insecure_channel(self.server_address, options=self.options)
         self.stub = tenseal_allreduce_data_pb2_grpc.AllReduceServiceStub(channel)
+        self.data_usage_records = []
 
     def __sum_enc(self, plain_vector, comm_rank):
         # print(">>> client sum encrypted start")
@@ -68,10 +69,16 @@ class AllReduceClient:
 
         np_dec_vector =np.array(dec_vector)
 
-        # print(">>> client sum enc vector end, cost {:.2f} s: encryption {:.2f} s, create request {:.2f} s, "
-        #       "comm with server {:.2f} s, deserialize {:.2f} s, decrypt {:.2f} s"
-        #       .format(time.time() - encrypt_start, encrypt_time, request_time,
-        #               comm_time, deserialize_time, decrypt_time))
+        print(">>> client sum enc vector end, cost {:.2f} s: encryption {:.2f} s, create request {:.2f} s, "
+              "comm with server {:.2f} s, deserialize {:.2f} s, sent bytes: {}, received bytes: {}"
+              .format(time.time() - encrypt_start, encrypt_time, request_time,
+                      comm_time, deserialize_time, sys.getsizeof(enc_vector_bytes), sys.getsizeof(response.msg)))
+
+        data_record = {
+            "sent_size": sys.getsizeof(enc_vector_bytes),
+            "received_size": sys.getsizeof(response.msg)
+        }
+        self.data_usage_records.append(data_record)
 
         return np_dec_vector
 

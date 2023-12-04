@@ -20,6 +20,16 @@ class FaginTrainer(object):
         self.server_addr = args.a_server_address
         self.client = AllReduceClient(self.server_addr, args)
 
+
+    def get_data_size(self):
+        data_sum_records = []
+        sent_size = received_size = 0
+        for i in range(len(self.client.data_usage_records)):
+            sent_size += self.client.data_usage_records[i]['sent_size']
+            received_size += self.client.data_usage_records[i]['received_size']
+        data = {'sent_size': sent_size, 'received_size': received_size}
+        data_sum_records.append(data)
+        return data_sum_records
     def transmit(self, vector):
         summed_vector = self.client.transmit(vector)
         # print(summed_vector)
@@ -147,7 +157,7 @@ class FaginTrainer(object):
         count_label_start = time.time()
         label_count = [0 for _ in range(self.args.n_classes)]
         for j in top_k_ids:
-            label_count[self.targets[j]] += 1
+            label_count[int(self.targets[j])] += 1
         pred_target = np.argmax(label_count)
         pred_prob = [i / float(k) for i in label_count]
         if self.args.rank == 0:

@@ -40,6 +40,16 @@ class FaginBatchTrainer(object):
         self.server_addr = args.a_server_address
         self.client = AllReduceClient(self.server_addr, args)
 
+    def get_data_size(self):
+        data_sum_records = []
+        sent_size = received_size = 0
+        for i in range(len(self.client.data_usage_records)):
+            sent_size += self.client.data_usage_records[i]['sent_size']
+            received_size += self.client.data_usage_records[i]['received_size']
+        data = {'sent_size': sent_size, 'received_size': received_size}
+        data_sum_records.append(data)
+        return data_sum_records
+
     def transmit(self, vector, comm_rank):
 
         summed_vector = self.client.transmit(vector, comm_rank)

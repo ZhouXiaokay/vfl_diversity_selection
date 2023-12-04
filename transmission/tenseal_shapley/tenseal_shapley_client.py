@@ -25,6 +25,7 @@ class ShapleyClient:
                         ('grpc.max_receive_message_length', self.max_msg_size)]
         channel = grpc.insecure_channel(self.server_address, options=self.options)
         self.stub = tenseal_shapley_data_pb2_grpc.ShapleyServiceStub(channel)
+        self.data_usage_records = []
 
     def __sum_shapley(self, plain_vector):
         print(">>> client sum encrypted start")
@@ -37,6 +38,7 @@ class ShapleyClient:
         # create request
         request_start = time.time()
         enc_vector_bytes = enc_vector.serialize()
+        request_size = len(enc_vector_bytes)
         print("size of msg: {} bytes".format(sys.getsizeof(enc_vector_bytes)))
         request = tenseal_shapley_data_pb2.client_shapley_msg(
             client_rank=self.client_rank,
@@ -58,12 +60,23 @@ class ShapleyClient:
         assert len(top_k_ranking_flat) == (2**self.num_clients - 1) * self.k
         deserialize_time = time.time() - deserialize_start
 
+
         print(">>> client sum shapley end, cost {:.2f} s: encryption {:.2f} s, create request {:.2f} s, "
-              "comm with server {:.2f} s, deserialize {:.2f} s"
+              "comm with server {:.2f} s, deserialize {:.2f} s, sent bytes: {}, received bytes: {}"
               .format(time.time() - encrypt_start, encrypt_time, request_time,
-                      comm_time, deserialize_time))
+                      comm_time, deserialize_time, sys.getsizeof(enc_vector_bytes), sys.getsizeof(response.msg)))
+
+        data_record = {
+            "sent_size": sys.getsizeof(enc_vector_bytes),
+            "received_size": sys.getsizeof(response)
+        }
+        self.data_usage_records.append(data_record)
+
+        print(self.data_usage_records)
 
         return top_k_ranking_flat
+
+
 
     def transmit(self, plain_vector, operator="sum"):
         trans_start = time.time()

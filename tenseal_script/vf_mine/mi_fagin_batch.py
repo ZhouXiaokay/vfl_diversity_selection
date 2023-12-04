@@ -48,15 +48,7 @@ def run(args):
     world_size = args.world_size
     rank = args.rank
 
-    # file_name = "{}/{}_{}".format(args.root, rank, world_size)
-    # print("read file {}".format(file_name))
-    # dataset = load_credit_data()
-    # dataset = load_bank_data()
-    # dataset = load_mushroom_data()
-    # dataset = load_covtype_data()
-    dataset = choose_dataset('credit')
-    # dataset = load_web_data()
-    # dataset = load_phishing_data()
+    dataset = choose_dataset('bank')
 
     load_start = time.time()
     data, targets = load_dummy_partition_with_label(dataset, args.num_clients, rank)
@@ -114,6 +106,12 @@ def run(args):
         true_targets.append(cur_test_target)
         cur_mi_values = trainer.find_top_k(cur_test_data, cur_test_target, args.k, group_keys)
         client_mi_values += cur_mi_values
+
+    time_cost = time.time() - utility_start
+    sent_size = trainer.get_data_size()[-1]['sent_size']
+    received_size = trainer.get_data_size()[-1]['received_size']
+
+    print(f"sent msg size is {sent_size}, received msg size is {received_size}, time cost is {time_cost}\r\n")
 
     client_group = [0]*args.world_size
     mi_sort_ind = np.argsort(client_mi_values)[::-1]

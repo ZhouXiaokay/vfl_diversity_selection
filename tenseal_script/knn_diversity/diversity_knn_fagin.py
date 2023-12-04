@@ -1,5 +1,7 @@
 import time
 import sys
+code_path = '/home/xy_li/code/vfl_diversity_selection'
+sys.path.append(code_path)
 import math
 from conf import global_args_parser
 import numpy as np
@@ -7,11 +9,11 @@ from torch.multiprocessing import Process
 
 import torch
 import torch.distributed as dist
+import logging
 from sklearn.metrics import accuracy_score, roc_auc_score
 
 # sys.path.append("../../")
-from data_loader.load_data import load_dummy_partition_with_label, load_credit_data, load_bank_data, load_covtype_data, \
-    load_adult_data
+from data_loader.load_data import load_dummy_partition_with_label, choose_dataset
 from tenseal_trainer.knn_diversity.fagin_trainer import FaginTrainer
 from utils.helpers import seed_torch, stochastic_greedy
 
@@ -51,10 +53,9 @@ def run(args):
 
     # file_name = "{}/{}_{}".format(args.root, rank, world_size)
     # print("read file {}".format(file_name))
-    dataset = load_credit_data()
-    # dataset = load_bank_data()
-    # dataset = load_covtype_data()
-    # dataset = load_adult_data()
+    data_name = 'bank'
+    dataset = choose_dataset(data_name)
+    # logging.basicConfig(filename='diversity_knn_all_reduce_' + data_name + '.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
     load_start = time.time()
     data, targets = load_dummy_partition_with_label(dataset, args.num_clients, rank)
@@ -131,6 +132,12 @@ def run(args):
     # if args.rank == 0:
     #     print("accuracy sum of different size: {}".format(group_acc_sum))
 
+    time_cost = time.time() - utility_start
+    sent_size = trainer.get_data_size()[-1]['sent_size']
+    received_size = trainer.get_data_size()[-1]['received_size']
+    # logging.info(f"Sent msg size is {sent_size}, received msg size is {received_size}, time cost is {time_cost}")
+    print(f"sent msg size is {sent_size}, received msg size is {received_size}, time cost is {time_cost}\r\n")
+
     avg_dists = np.average(np.array(avg_dists), axis=0)
     client_local_dist = avg_dists[:, np.newaxis]
     select_clients = stochastic_greedy(client_local_dist, args.num_clients, args.select_clients)
@@ -141,7 +148,7 @@ def run(args):
     if args.rank == 0:
         print(avg_dists)
 
-
+    # print(sum(trainer.client.comm_time_l))
 
 def init_processes(arg, fn):
     """ Initialize the distributed environment. """

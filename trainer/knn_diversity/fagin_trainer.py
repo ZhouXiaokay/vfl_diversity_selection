@@ -34,6 +34,7 @@ class FaginTrainer(object):
         self.n_data = len(data)
         self.targets = targets
         self.client_list = [i for i in range(args.num_clients)]
+        self.n_candidate_ind= []
 
     def find_top_k(self, test_data, test_target, k):
         start_time = time.time()
@@ -121,6 +122,11 @@ class FaginTrainer(object):
         candidate_local_dist = local_dist[candidate_ind]
         all_candidate_local_dist = all_gather(candidate_local_dist)
 
+        print("candidate ind is:"+format(len(candidate_ind)))
+        self.n_candidate_ind.append(len(candidate_ind))
+        # print(self.n_candidate_ind)
+
+
         candidate_dist = sum_all_reduce(candidate_local_dist)
         candidate_dist_time = time.time() - candidate_dist_start
 
@@ -166,3 +172,6 @@ class FaginTrainer(object):
         # print(np.average(sorted_dist_top_k,axis=1))
 
         return pred_target, pred_prob, average_dist_top_k
+
+    def print_avg_n_candidates(self):
+        print("the average num of candidates is:",np.average(self.n_candidate_ind))

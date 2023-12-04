@@ -24,6 +24,9 @@ class AllReduceClient:
                         ('grpc.max_receive_message_length', self.max_msg_size)]
         channel = grpc.insecure_channel(self.server_address, options=self.options)
         self.stub = tenseal_allreduce_data_pb2_grpc.AllReduceServiceStub(channel)
+        self.data_usage_records = []
+        self.comm_time_l = []
+        self.index = 0
 
     def __sum_enc(self, plain_vector):
         # print(">>> client sum encrypted start")
@@ -36,6 +39,8 @@ class AllReduceClient:
         # create request
         request_start = time.time()
         enc_vector_bytes = enc_vector.serialize()
+
+        # request_size = len(enc_vector_bytes)
 
         # send size of msg{ sys.getsizeof(enc_vector_bytes)}
 
@@ -51,6 +56,7 @@ class AllReduceClient:
         # print("start comm with server, time = {}".format(time.asctime(time.localtime(time.time()))))
         response = self.stub.sum_enc(request)
         comm_time = time.time() - comm_start
+        self.comm_time_l.append(comm_time)
 
         # deserialize summed enc vector from response
         deserialize_start = time.time()
@@ -68,10 +74,18 @@ class AllReduceClient:
 
         np_dec_vector =np.array(dec_vector)
 
-        # print(">>> client sum enc vector end, cost {:.2f} s: encryption {:.2f} s, create request {:.2f} s, "
-        #       "comm with server {:.2f} s, deserialize {:.2f} s, decrypt {:.2f} s"
-        #       .format(time.time() - encrypt_start, encrypt_time, request_time,
-        #               comm_time, deserialize_time, decrypt_time))
+        print(">>> client sum enc vector end, cost {:.2f} s: encryption {:.2f} s, create request {:.2f} s, "
+              "comm with server {:.2f} s, deserialize {:.2f} s, sent bytes: {}, received bytes: {}"
+              .format(time.time() - encrypt_start, encrypt_time, request_time,
+                      comm_time, deserialize_time, sys.getsizeof(enc_vector_bytes), sys.getsizeof(response.msg)))
+
+        data_record = {
+            "sent_size": sys.getsizeof(enc_vector_bytes),
+            "received_size": sys.getsizeof(response.msg)
+        }
+        self.data_usage_records.append(data_record)
+
+        # print(self.data_usage_records)
 
         return np_dec_vector
 

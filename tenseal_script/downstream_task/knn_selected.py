@@ -56,12 +56,11 @@ def run(args):
 
     world_size = args.world_size
     rank = args.rank
-    input_indices = [0, 1, 2, 3]
+    input_indices = [0, 3]
     data_rank = input_indices[rank]
     print("data rank is:", data_rank)
 
-    data_name = 'bank'
-    dataset = choose_dataset(data_name)
+    dataset = choose_dataset('ijcnn')
 
     load_start = time.time()
     data, targets = load_dummy_partition_with_label(dataset, args.num_clients, data_rank)
@@ -119,7 +118,7 @@ def run(args):
         # print("one test finish: target = {}, prediction = {}, cost {} s"
         #      .format(cur_test_target, pred_target, one_test_time))
     if args.rank == 0:
-        print("test {} data cost {} s".format(args.n_test, time.time() - test_start))
+        print("test {} data cost {} s".format(n_test, time.time() - test_start))
 
     accuracy = accuracy_score(true_targets, pred_targets)
     auc = roc_auc_score(true_targets, np.array(pred_probs)[:, 1])

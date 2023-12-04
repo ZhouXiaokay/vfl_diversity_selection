@@ -18,12 +18,17 @@ if __name__ == '__main__':
     #     poly_modulus_degree=32768,
     #     coeff_mod_bit_sizes=[60, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 60]
     # )
+    # context = ts.context(
+    #     ts.SCHEME_TYPE.CKKS,
+    #     poly_modulus_degree=8192,
+    #     coeff_mod_bit_sizes=[40, 21, 21, 21, 21, 21, 21, 40]
+    # )
+
     context = ts.context(
         ts.SCHEME_TYPE.CKKS,
         poly_modulus_degree=8192,
-        coeff_mod_bit_sizes=[40, 21, 21, 21, 21, 21, 21, 40]
+        coeff_mod_bit_sizes=[60, 40, 40, 60]
     )
-
     context.global_scale = 2 ** 40
     context.generate_galois_keys()
 
@@ -32,7 +37,7 @@ if __name__ == '__main__':
     f = open(ctx_file, "wb")
     f.write(context_bytes)
 
-    n_item = 1000
+    n_item = 100
     v1 = range(n_item)
     v2 = range(n_item)
     n_iter = 100
@@ -66,7 +71,7 @@ if __name__ == '__main__':
         plain_modulus=1032193
     )
 
-    n_item = 1000
+    n_item = 100
     v1 = range(n_item)
     v2 = range(n_item)
     n_iter = 100

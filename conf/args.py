@@ -12,7 +12,7 @@ def global_args_parser():
         '-i',
         '--init-method',
         type=str,
-        default='tcp://127.0.0.1:23459',
+        default='tcp://127.0.0.1:23457',
         help='URL specifying how to initialize the package.')
     parser.add_argument('--rank',
                         type=int,
@@ -38,7 +38,7 @@ def global_args_parser():
                         type=float,
                         help='learning rate')
     parser.add_argument('--seed',
-                        default=66,
+                        default=5,
                         type=int,
                         help='random seed')
     parser.add_argument('--loss_total',
@@ -77,9 +77,9 @@ def global_args_parser():
     parser.add_argument('--k', type=int, default=10)
     parser.add_argument('--n-test', type=int, default=300)
     parser.add_argument('--test_ratio', type=float, default=0.2)
-    parser.add_argument('--config', type=str, default='/home/userdata/zxk/codes/vfl_diversity_selection/'
+    parser.add_argument('--config', type=str, default='/home/xy_li/code/vfl_diversity_selection/'
                                                       'transmission/tenseal_shapley/ts_ckks_tiny.config')
-    parser.add_argument('--a_server_address', type=str, default='127.0.0.1:34567')
+    parser.add_argument('--a_server_address', type=str, default='127.0.0.1:34565')
     parser.add_argument('--mi_world_size', type=int, default=2)
 
 

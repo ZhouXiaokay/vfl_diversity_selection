@@ -1,6 +1,6 @@
 import time, math
 import sys
-# code_path = '/home/zxk/codes/vfl_data_valuation'
+# code_path = '/home/xy_li/code/vfl_diversity_selection'
 # sys.path.append(code_path)
 from utils.helpers import seed_torch, get_utility_key, utility_key_to_groups
 from conf import global_args_parser
@@ -12,8 +12,7 @@ seed_torch()
 
 import torch.distributed as dist
 from tenseal_trainer.lr_shapley.shapley_lr_trainer import ShapleyLRTrainer
-from data_loader.load_data import load_dummy_partition_with_label, load_credit_data, load_bank_data, load_mushroom_data, \
-    load_covtype_data, load_adult_data, load_web_data, load_phishing_data
+from data_loader.load_data import load_dummy_partition_with_label, choose_dataset
 from torch.multiprocessing import Process
 from sklearn.metrics import accuracy_score, roc_auc_score
 from sklearn.model_selection import train_test_split
@@ -52,7 +51,7 @@ def run(args):
     # dataset = load_mushroom_data()
     # dataset = load_covtype_data()
     # dataset = load_adult_data()
-    dataset = load_web_data()
+    dataset = choose_dataset('bank')
     # dataset = load_phishing_data()
     data, targets = load_dummy_partition_with_label(dataset, args.num_clients, client_rank)
     # print(data[0])
@@ -147,6 +146,13 @@ def run(args):
                                                                                     time.time() - group_start,
                                                                                     epoch_idx)
             # logger.info(group_msg)
+
+    time_cost = time.time() - utility_start
+    sent_size = trainer.get_data_size()[-1]['sent_size']
+    received_size = trainer.get_data_size()[-1]['received_size']
+
+    print(f"sent msg size is {sent_size}, received msg size is {received_size}, time cost is {time_cost}\r\n")
+
 
     if args.rank == 0:
         print("calculate utility cost {:.2f} s, total round {}, total epochs {}"

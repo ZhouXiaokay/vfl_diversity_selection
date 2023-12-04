@@ -1,5 +1,8 @@
 import time
 import sys
+code_path = '/home/xy_li/code/vfl_diversity_selection'
+sys.path.append(code_path)
+
 import math
 from conf import global_args_parser
 import numpy as np
@@ -10,9 +13,11 @@ import torch.distributed as dist
 from sklearn.metrics import accuracy_score, roc_auc_score
 
 # sys.path.append("../../")
-from data_loader.load_data import load_dummy_partition_with_label, load_credit_data, load_bank_data, load_covtype_data
+from data_loader.load_data import load_dummy_partition_with_label, choose_dataset
 from tenseal_trainer.knn_diversity.all_reduce_trainer import AllReduceTrainer
 from utils.helpers import seed_torch, stochastic_greedy
+
+import logging
 
 
 def dist_is_initialized():
@@ -50,9 +55,9 @@ def run(args):
 
     # file_name = "{}/{}_{}".format(args.root, rank, world_size)
     # print("read file {}".format(file_name))
-    dataset = load_credit_data()
-    # dataset = load_bank_data()
-    # dataset = load_covtype_data()
+    data_name = 'bank'
+    dataset = choose_dataset(data_name)
+    # logging.basicConfig(filename='diversity_knn_all_reduce_' + data_name+'.log', level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
     load_start = time.time()
     data, targets = load_dummy_partition_with_label(dataset, args.num_clients, rank)
@@ -112,6 +117,15 @@ def run(args):
 
         one_test_time = time.time() - one_test_start
 
+    time_cost = time.time() - utility_start
+    sent_size = trainer.get_data_size()[-1]['sent_size']
+    received_size = trainer.get_data_size()[-1]['received_size']
+
+    # logging.info(f"Sent msg size is {sent_size}, received msg size is {received_size}, time cost is {time_cost}")
+
+    print(f"sent msg size is {sent_size}, received msg size is {received_size}, time cost is {time_cost}\r\n")
+
+    # print(trainer.get_data_size())
     avg_dists = np.average(np.array(avg_dists), axis=0)
     client_local_dist = avg_dists[:, np.newaxis]
     select_clients = stochastic_greedy(client_local_dist, args.num_clients, args.select_clients)
@@ -119,6 +133,8 @@ def run(args):
     if args.rank == 0:
         print("selected clients are: ", select_clients)
         print("client local dist: ", client_local_dist)
+        # logging.info("Selected clients are: %s", select_clients)
+        # logging.info("Client local dist: %s", client_local_dist)
 
 
 

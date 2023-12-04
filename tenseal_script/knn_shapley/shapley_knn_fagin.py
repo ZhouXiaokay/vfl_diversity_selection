@@ -10,7 +10,7 @@ import torch.distributed as dist
 from sklearn.metrics import accuracy_score, roc_auc_score
 
 # sys.path.append("../../")
-from data_loader.load_data import load_dummy_partition_with_label, load_credit_data
+from data_loader.load_data import load_dummy_partition_with_label, choose_dataset
 from tenseal_trainer.knn_shapley.fagin_trainer import FaginTrainer
 from utils.helpers import seed_torch
 
@@ -50,7 +50,7 @@ def run(args):
 
     # file_name = "{}/{}_{}".format(args.root, rank, world_size)
     # print("read file {}".format(file_name))
-    dataset = load_credit_data()
+    dataset = choose_dataset('bank')
 
     load_start = time.time()
     data, targets = load_dummy_partition_with_label(dataset, args.num_clients, rank)
@@ -166,6 +166,13 @@ def run(args):
         score /= float(math.pow(2, world_size - 1))
         shapley_value[i] = score
         n_shapley_round += 1
+
+    time_cost = time.time() - utility_start
+    sent_size = trainer.get_data_size()[-1]['sent_size']
+    received_size = trainer.get_data_size()[-1]['received_size']
+
+    print(f"sent msg size is {sent_size}, received msg size is {received_size}, time cost is {time_cost}\r\n")
+
     if args.rank == 0:
         print("calculate shapley value cost {:.2f} s".format(time.time() - shapley_start))
         print("shapley value of {} clients: {}".format(len(shapley_value), shapley_value))

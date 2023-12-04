@@ -1,13 +1,15 @@
 import time
 from concurrent import futures
-
+import sys
+code_path = '/home/xy_li/code/vfl_diversity_selection'
+sys.path.append("../../")
+sys.path.append(code_path)
 import numpy as np
 import grpc
 import tenseal as ts
 from conf.args import global_args_parser
-import sys
 
-sys.path.append("../../")
+
 import tenseal_allreduce_data_pb2_grpc, tenseal_allreduce_data_pb2
 
 
@@ -31,7 +33,6 @@ class AllReduceServer(tenseal_allreduce_data_pb2_grpc.AllReduceServiceServicer):
         self.sum_completed = False
 
         print("all reduce server has been initialized")
-        print("world size is:", num_clients )
 
     def reset_sum(self):
         self.sum_enc_vectors = []
@@ -56,7 +57,7 @@ class AllReduceServer(tenseal_allreduce_data_pb2_grpc.AllReduceServiceServicer):
 
         self.sum_enc_vectors.append(enc_vector)
         self.n_sum_request += 1
-        print("here 1", self.n_sum_request)
+        # print("here 1", self.n_sum_request)
         # wait until receiving of all clients' requests
         wait_start = time.time()
         while self.n_sum_request % self.num_clients != 0:
@@ -69,7 +70,7 @@ class AllReduceServer(tenseal_allreduce_data_pb2_grpc.AllReduceServiceServicer):
             self.sum_data.append(summed_enc_vector)
             sum_time = time.time() - sum_start
             self.sum_completed = True
-        print("here 2", client_rank)
+        # print("here 2", client_rank)
         # print("here here", client_rank, self.sum_enc_vectors)
         sum_wait_start = time.time()
         while not self.sum_completed:
@@ -83,13 +84,13 @@ class AllReduceServer(tenseal_allreduce_data_pb2_grpc.AllReduceServiceServicer):
             msg=self.sum_data[0].serialize()
         )
         response_time = time.time() - response_start
-        print("here 3")
+        # print("here 3")
         # wait until creating all response
         self.n_sum_response = self.n_sum_response + 1
-        print("here 4", self.n_sum_response)
+        # print("here 4", self.n_sum_response)
         while self.n_sum_response % self.num_clients != 0:
             time.sleep(self.sleep_time)
-        print("here 5")
+        # print("here 5")
 
         if client_rank == 0:
             self.reset_sum()

@@ -29,32 +29,22 @@ class ShapleyLRTrainer(object):
 
         return summed_tensor
 
-    def get_data_size(self):
-        data_sum_records = []
-        sent_size = received_size = 0
-        for i in range(len(self.client.data_usage_records)):
-            sent_size += self.client.data_usage_records[i]['sent_size']
-            received_size += self.client.data_usage_records[i]['received_size']
-        data = {'sent_size': sent_size, 'received_size': received_size}
-        data_sum_records.append(data)
-        return data_sum_records
-
     def one_iteration(self, x, y):
 
         partial_z = self.lr(x) if self.is_attend == 1 else torch.zeros(x.shape[0])
         # sum_z = sum_all_reduce_tensor(partial_z)
-        sum_z_enc = self.transmit(partial_z)
-        # sum_z.requires_grad = True
-        # y = y.double()
-        y=y.float()
-        sum_z = sum_all_reduce_tensor(partial_z)
+        sum_z = self.transmit(partial_z)
+        sum_z.requires_grad = True
+        y = y.double()
         h = torch.sigmoid(sum_z)
 
         loss = torch.zeros(1)
         if self.is_attend == 1:
             loss = self.criterion(h, y)
-            self.optimizer.zero_grad()
             loss.backward()
+
+            self.optimizer.zero_grad()
+            partial_z.backward(sum_z.grad)
             self.optimizer.step()
 
         global_loss = loss.float().detach()
